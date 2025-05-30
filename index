@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Расписание колледжа</title>
+    <style>
+        :root {
+            --bg-color: #f5f5f5;
+            --text-color: #333;
+            --header-bg: #fff;
+            --nav-bg: #fff;
+            --card-bg: #fff;
+            --primary-color: #0088cc;
+            --shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .dark-theme {
+            --bg-color: #1a1a1a;
+            --text-color: #fff;
+            --header-bg: #2d2d2d;
+            --nav-bg: #2d2d2d;
+            --card-bg: #333;
+            --primary-color: #4da8da;
+            --shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            transition: background 0.3s, color 0.3s;
+        }
+
+        .top-bar {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 8px 15px;
+            background: var(--header-bg);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow);
+            z-index: 1000;
+            height: 50px;
+            box-sizing: border-box;
+        }
+
+        .theme-toggle {
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            color: var(--text-color);
+            padding: 5px;
+            margin-right: 5px;
+        }
+
+        .container {
+            padding: 15px;
+            margin: 50px 0 60px;
+            min-height: calc(100vh - 110px);
+            overflow-y: auto;
+        }
+
+        .nav-bottom {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            display: flex;
+            height: 60px;
+            background: var(--nav-bg);
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            box-sizing: border-box;
+        }
+
+        .nav-button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: none;
+            font-size: 14px;
+            cursor: pointer;
+            transition: 0.3s;
+            color: var(--text-color);
+        }
+
+        .nav-button.active {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .schedule-buttons {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .schedule-btn {
+            padding: 8px 12px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: opacity 0.3s;
+            flex: 1;
+        }
+
+        .group-select, .teacher-select {
+            width: 100%;
+            padding: 8px;
+            margin: 8px 0;
+            background: var(--card-bg);
+            color: var(--text-color);
+            border: 1px solid var(--primary-color);
+            border-radius: 5px;
+            display: none;
+        }
+
+        .schedule-view {
+            margin-top: 15px;
+            background: var(--card-bg);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+        }
+
+        .event-item {
+            background: var(--card-bg);
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+        }
+
+        /* Стили для расписания с вертикальными днями */
+        .day-schedule {
+            margin-bottom: 20px;
+            padding: 15px;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+        
+        .dark-theme .day-schedule {
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .day-header {
+            font-weight: bold;
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid var(--primary-color);
+        }
+        
+        .lesson-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px dashed rgba(0,0,0,0.1);
+        }
+        
+        .dark-theme .lesson-item {
+            border-bottom: 1px dashed rgba(255,255,255,0.1);
+        }
+        
+        .lesson-time {
+            font-weight: bold;
+            min-width: 100px;
+            color: var(--primary-color);
+        }
+        
+        .lesson-details {
+            flex: 1;
+            padding-left: 10px;
+        }
+        
+        .no-lesson {
+            padding: 10px 0;
+            color: #999;
+            font-style: italic;
+        }
+        
+        .dark-theme .no-lesson {
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <h2 id="currentTab" style="margin: 0; font-size: 1.1rem;">Расписание</h2>
+        <button class="theme-toggle" onclick="toggleTheme()">🌞</button>
+    </div>
+
+    <div class="container">
+        <div id="scheduleTab" class="tab-content active">
+            <div class="schedule-buttons">
+                <button class="schedule-btn" onclick="toggleSelection('group')">Занятия</button>
+                <button class="schedule-btn" onclick="toggleSelection('teacher')">Преподаватели</button>
+            </div>
+            
+            <select id="groupSelect" class="group-select">
+                <option value="">Выберите группу</option>
+                <option>Группа 1</option>
+                <option>Группа 2</option>
+            </select>
+            
+            <select id="teacherSelect" class="teacher-select">
+                <option value="">Выберите преподавателя</option>
+                <option>Иванов И.И.</option>
+                <option>Петров П.П.</option>
+                <option>Сидоров С.С.</option>
+                <option>Кузнецова Е.В.</option>
+            </select>
+            
+            <div id="scheduleView" class="schedule-view">
+                Выберите группу или преподавателя
+            </div>
+        </div>
+
+        <div id="eventsTab" class="tab-content">
+            <div class="events-list">
+                <div class="event-item">
+                    <h3 style="margin: 0 0 5px;">Важное событие!</h3>
+                    <p style="margin: 0 0 5px;">Завтра собрание в актовом зале в 10:00</p>
+                    <small style="color: #666;">01.01.2024</small>
+                </div>
+                <div class="event-item">
+                    <h3 style="margin: 0 0 5px;">Изменение расписания</h3>
+                    <p style="margin: 0 0 5px;">Пары по физике переносятся на пятницу</p>
+                    <small style="color: #666;">30.12.2023</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="nav-bottom">
+        <button class="nav-button active" onclick="switchTab('schedule')">Расписание</button>
+        <button class="nav-button" onclick="switchTab('events')">События</button>
+    </div>
+
+    <script>
+        // Массив дней недели
+        const weekDays = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+        
+        // Временные интервалы
+        const timeSlots = [
+            "8:30 - 9:55",
+            "10:15 - 11:40",
+            "11:55 - 13:20",
+            "14:00 - 15:25",
+            "15:40 - 17:05",
+            "17:20 - 18:45"
+        ];
+
+        function switchTab(tabName) {
+            const tabTitles = {'schedule': 'Расписание', 'events': 'События'};
+            document.getElementById('currentTab').textContent = tabTitles[tabName];
+            
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.getElementById(tabName + 'Tab').classList.add('active');
+            
+            document.querySelectorAll('.nav-button').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        function toggleSelection(type) {
+            const groupSelect = document.getElementById('groupSelect');
+            const teacherSelect = document.getElementById('teacherSelect');
+            
+            groupSelect.style.display = type === 'group' ? 'block' : 'none';
+            teacherSelect.style.display = type === 'teacher' ? 'block' : 'none';
+            
+            // Очищаем предыдущее расписание при переключении
+            document.getElementById('scheduleView').innerHTML = 'Выберите группу или преподавателя';
+        }
+
+        function generateDaySchedule(day, lessons, type) {
+            let html = `<div class="day-schedule">
+                <div class="day-header">${day}</div>`;
+            
+            for (let i = 0; i < timeSlots.length; i++) {
+                const lesson = lessons[i];
+                
+                if (lesson) {
+                    if (type === 'group') {
+                        html += `<div class="lesson-item">
+                            <div class="lesson-time">${timeSlots[i]}</div>
+                            <div class="lesson-details">
+                                ${lesson.subject}
+                                <div><small>${lesson.teacher}</small></div>
+                            </div>
+                        </div>`;
+                    } else {
+                        html += `<div class="lesson-item">
+                            <div class="lesson-time">${timeSlots[i]}</div>
+                            <div class="lesson-details">
+                                ${lesson.subject}
+                                <div><small>${lesson.group}</small></div>
+                            </div>
+                        </div>`;
+                    }
+                } else {
+                    html += `<div class="lesson-item">
+                        <div class="lesson-time">${timeSlots[i]}</div>
+                        <div class="lesson-details no-lesson">—</div>
+                    </div>`;
+                }
+            }
+            
+            html += `</div>`;
+            return html;
+        }
+
+        function showSchedule(type, value) {
+            const scheduleData = {
+                group: {
+                    'Группа 1': {
+                        'Понедельник': [
+                            { subject: 'Математика', teacher: 'Иванов И.И.' },
+                            { subject: 'Физика', teacher: 'Петров П.П.' },
+                            null,
+                            { subject: 'Информатика', teacher: 'Сидоров С.С.' },
+                            null,
+                            null
+                        ],
+                        'Вторник': [
+                            { subject: 'История', teacher: 'Кузнецова Е.В.' },
+                            null,
+                            { subject: 'Химия', teacher: 'Николаева Т.А.' },
+                            null,
+                            { subject: 'Биология', teacher: 'Фролов Д.С.' },
+                            null
+                        ],
+                        'Среда': [
+                            null,
+                            null,
+                            { subject: 'Литература', teacher: 'Смирнова О.П.' },
+                            { subject: 'Английский язык', teacher: 'Козлов И.Н.' },
+                            null,
+                            null
+                        ],
+                        'Четверг': [
+                            { subject: 'Физкультура', teacher: 'Макаров С.А.' },
+                            { subject: 'ОБЖ', teacher: 'Егоров В.К.' },
+                            null,
+                            null,
+                            { subject: 'География', teacher: 'Тихонова Л.М.' },
+                            null
+                        ],
+                        'Пятница': [
+                            null,
+                            { subject: 'Информатика', teacher: 'Сидоров С.С.' },
+                            { subject: 'Математика', teacher: 'Иванов И.И.' },
+                            null,
+                            { subject: 'Физика', teacher: 'Петров П.П.' },
+                            null
+                        ],
+                        'Суббота': [
+                            null,
+                            null,
+                            { subject: 'Экономика', teacher: 'Белова А.Р.' },
+                            null,
+                            null,
+                            null
+                        ]
+                    },
+                    'Группа 2': {
+                        'Понедельник': [
+                            { subject: 'Биология', teacher: 'Фролов Д.С.' },
+                            null,
+                            { subject: 'Математика', teacher: 'Иванов И.И.' },
+                            { subject: 'История', teacher: 'Кузнецова Е.В.' },
+                            null,
+                            null
+                        ],
+                        'Вторник': [
+                            null,
+                            { subject: 'Английский язык', teacher: 'Козлов И.Н.' },
+                            null,
+                            { subject: 'Физика', teacher: 'Петров П.П.' },
+                            { subject: 'Информатика', teacher: 'Сидоров С.С.' },
+                            null
+                        ],
+                        'Среда': [
+                            { subject: 'Химия', teacher: 'Николаева Т.А.' },
+                            null,
+                            { subject: 'Физкультура', teacher: 'Макаров С.А.' },
+                            null,
+                            null,
+                            null
+                        ],
+                        'Четверг': [
+                            null,
+                            { subject: 'Литература', teacher: 'Смирнова О.П.' },
+                            null,
+                            { subject: 'ОБЖ', teacher: 'Егоров В.К.' },
+                            null,
+                            null
+                        ],
+                        'Пятница': [
+                            { subject: 'География', teacher: 'Тихонова Л.М.' },
+                            null,
+                            { subject: 'Экономика', teacher: 'Белова А.Р.' },
+                            null,
+                            null,
+                            null
+                        ],
+                        'Суббота': [
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null
+                        ]
+                    }
+                },
+                teacher: {
+                    'Иванов И.И.': {
+                        'Понедельник': [
+                            { subject: 'Математика', group: 'Группа 1' },
+                            null,
+                            { subject: 'Математика', group: 'Группа 2' },
+                            null,
+                            null,
+                            null
+                        ],
+                        'Вторник': [
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null
+                        ],
+                        'Среда': [
+                            null,
+                            { subject: 'Математика', group: 'Группа 1' },
+                            null,
+                            { subject: 'Математика', group: 'Группа 2' },
+                            null,
+                            null
+                        ],
+                        'Четверг': [
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null
+                        ],
+                        'Пятница': [
+                            null,
+                            null,
+                            { subject: 'Математика', group: 'Группа 1' },
+                            null,
+                            { subject: 'Математика', group: 'Группа 2' },
+                            null
+                        ],
+                        'Суббота': [
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null
+                        ]
+                    },
+                    'Петров П.П.': {
+                        'Понедельник': [
+                            null,
+                            { subject: 'Физика', group: 'Группа 1' },
+                            null,
+                            null,
+                            null,
+                            null
+                        ],
+                        'Вторник': [
+                            null,
+                            null,
+                            null,
+                            { subject: 'Физика', group: 'Группа 2' },
+                            null,
+                            null
+                        ],
+                        'Среда': [
+                            null,
+                            null,
+                            null,
+                            null,
+                            { subject: 'Физика', group: 'Группа 1' },
+                            null
+                        ],
+                        'Четверг': [
+                            { subject: 'Физика', group: 'Группа 2' },
+                            null,
+                            null,
+                            null,
+                            null,
+                            null
+                        ],
+                        'Пятница': [
+                            null,
+                            null,
+                            null,
+                            null,
+                            { subject: 'Физика', group: 'Группа 1' },
+                            null
+                        ],
+                        'Суббота': [
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null
+                        ]
+                    }
+                }
+            };
+
+            const scheduleView = document.getElementById('scheduleView');
+            const data = scheduleData[type][value];
+
+            if (!data) {
+                scheduleView.innerHTML = 'Расписание не найдено';
+                return;
+            }
+
+            // Генерируем расписание для каждого дня
+            let html = `<h3 style="margin: 10px 15px;">Расписание ${value}</h3>`;
+            for (const day of weekDays) {
+                if (data[day]) {
+                    html += generateDaySchedule(day, data[day], type);
+                }
+            }
+            
+            scheduleView.innerHTML = html;
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('dark-theme');
+            const themeButton = document.querySelector('.theme-toggle');
+            if (themeButton) {
+                themeButton.textContent = document.body.classList.contains('dark-theme') ? '🌜' : '🌞';
+            }
+            localStorage.setItem('theme', document.body.classList.contains('dark-theme') ? 'dark' : 'light');
+        }
+
+        // Инициализация при загрузке
+        window.onload = function() {
+            // Восстановление темы
+            if(localStorage.getItem('theme') === 'dark') {
+                document.body.classList.add('dark-theme');
+                document.querySelector('.theme-toggle').textContent = '🌜';
+            }
+            
+            // Скрытие селектов
+            document.querySelectorAll('.group-select, .teacher-select').forEach(select => {
+                select.style.display = 'none';
+            });
+            
+            // Назначение обработчиков для селектов
+            document.getElementById('groupSelect').addEventListener('change', function() {
+                showSchedule('group', this.value);
+            });
+            
+            document.getElementById('teacherSelect').addEventListener('change', function() {
+                showSchedule('teacher', this.value);
+            });
+        }
+    </script>
+</body>
+</html>
